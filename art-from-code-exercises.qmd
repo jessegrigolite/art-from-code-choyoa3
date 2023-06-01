@@ -1,0 +1,28 @@
+---
+title: "art-from-code-exercises"
+author: "Jesse Grigolite"
+format: html
+editor: visual
+---
+
+## Getting Started
+
+# Exercise 1
+
+```{r}
+#loading in required packages
+library(ggplot2)
+library(tibble)
+library(ggthemes)
+```
+
+```{r}
+ggplot(data = mpg, aes(x = displ, y = hwy, colour = drv, size = cyl))+
+  geom_point(show.legend = FALSE, size = 10, color = "pink")+
+  theme_void()+
+  geom_violin(color = "yellow", trim = FALSE,  draw_quantiles = c(0.25, 0.5, 0.75), fill = "orange")+
+  scale_color_brewer()
+
+```
+
+

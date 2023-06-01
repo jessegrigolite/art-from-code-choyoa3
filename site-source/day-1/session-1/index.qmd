@@ -25,6 +25,7 @@ Fuck it. Let's steal them. Sorry Hadley.
 ```{r library-load, message=FALSE}
 library(ggplot2)
 library(tibble)
+library(ggthemes)
 ```
 
 Let's start with a data visualisation exercise that most R users have encountered at one time or another: creating a scatterplot. The ggplot2 package supplies the tediously-overused `mpg` data set that... I don't know, it has something to do with cars, I think? I don't drive and I am trying very hard to pretend I never learned anything about the internal combustion engine. The point here is that we have a data set. From the perspective of the generative artist our main concern is that it's a table that contains some numbers and text organised in a table:
@@ -89,6 +90,10 @@ And let's be honest. At this point the image has very little to do with cars. Su
 
 Try it yourself! Using nothing other than ggplot2 and the `mpg` data set, create your own artwork. Don't take too long: 3 minutes at the absolute most! See what you can come up with in that time!
 :::
+```{r}
+
+```
+
 
 I could just have easily created my own raw materials. As a statistical programming language R comes equipped with a very sophisticated collection of tools for generating pseudorandom numbers with various distributions. I can tap into this whenever I like but in a lot of cases I don't need anything more fancy than the `runif()` function. Uniformly distributed random numbers are perfectly adequate for many purposes. Let's make some:
 
