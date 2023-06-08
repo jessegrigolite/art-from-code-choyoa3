@@ -1,13 +1,21 @@
 ---
 title: "art-from-code-exercises"
 author: "Jesse Grigolite"
-format: html
-editor: visual
+date: 6/8/23
+format: 
+  html:
+    toc: true
+    toc-location: left
+    code-fold: true
+    theme: yeti
+execute: 
+  message: false
+  warning: false
 ---
 
-## Getting Started
+# Getting Started
 
-# Exercise 1
+Exercise: Try it yourself!
 
 ```{r}
 #loading in required packages
@@ -17,12 +25,283 @@ library(ggthemes)
 ```
 
 ```{r}
+#calling on ggplot and choosing my data for each axis
 ggplot(data = mpg, aes(x = displ, y = hwy, colour = drv, size = cyl))+
-  geom_point(show.legend = FALSE, size = 10, color = "pink")+
+  #creating a scatter plot of the raw data to serve as the background color and not choosing to display a legend
+  geom_point(show.legend = FALSE, size = 15, color = "pink")+
+  #getting rid of the grid in the background
   theme_void()+
+  #creating my centerpeice, a huge sunlike violin plot!
   geom_violin(color = "yellow", trim = FALSE,  draw_quantiles = c(0.25, 0.5, 0.75), fill = "orange")+
   scale_color_brewer()
 
 ```
 
+Exercises:
+1.) First, I will input the function that Navarro created.
+```{r}
+#copying in all the code to form the function polar art
+library(ggplot2)
+library(tibble)
+
+polar_art <- function(seed, n, palette) {
+  
+  # set the state of the random number generator
+  set.seed(seed)
+  
+  # data frame containing random values for 
+  # aesthetics we might want to use in the art
+  dat <- tibble(
+    x0 = runif(n),
+    y0 = runif(n),
+    x1 = x0 + runif(n, min = -.2, max = .2),
+    y1 = y0 + runif(n, min = -.2, max = .2),
+    shade = runif(n), 
+    size = runif(n)
+  )
+  
+  # plot segments in various colours, using 
+  # polar coordinates and a gradient palette
+  dat |> 
+    ggplot(aes(
+      x = x0,
+      y = y0,
+      xend = x1,
+      yend = y1,
+      colour = shade,
+      size = size
+    )) +
+    geom_segment(show.legend = FALSE) +
+    coord_polar() +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0, 0)) + 
+    scale_colour_gradientn(colours = palette) + 
+    scale_size(range = c(0, 10)) + 
+    theme_void()
+}
+
+polar_art(
+  seed = 2, 
+  n = 50, 
+  palette = c("red", "black", "white")
+)
+
+```
+
+Now I will practice creating my own piece of art form her function:
+```{r}
+#making one to look like the inside of a wave
+polar_art(seed = 1, n = 300, palette = c("aquamarine", "cadetblue1", "azure"))
+#making one to look like a flower
+polar_art(seed = 2, n = 1000, palette = c("yellow", "hotpink", "lightpink"))
+#making one to look like a mossy forrest
+polar_art(seed = 2, n = 100, palette = c("forestgreen", "darkolivegreen3", "dimgray"))
+```
+
+2.) In this exercise I will try to modify the function itself.
+
+```{r}
+polar_art_2 <- function(seed, n, palette) {
+  
+  # setting the state of the random number generator to 3 for a new set of nonsense
+  set.seed(3)
+  
+  # aesthetics we might want to use in the art
+ #choosing my n value
+   n <- 200
+ # creating data frame containing random values, keeping runif function for uniformity
+    dat <- tibble(
+    x0 = runif(n),
+    y0 = runif(n),
+    #giving my values a wider range for more chaos to occurr
+    x1 = x0 + runif(n, min = -.2, max = .2),
+    y1 = y0 + runif(n, min = -.2, max = .2),
+    shade = runif(n), 
+    size = runif(n)
+  )
+ 
+  
+  #now plotting my new data frame using the same format
+  dat |> 
+    ggplot(aes(
+      x = x0,
+      y = y0,
+      xend = x1,
+      yend = y1,
+      colour = shade,
+      size = size
+    )) +
+    geom_segment(show.legend = FALSE) +
+    coord_polar() +
+    scale_y_continuous(expand = c(0, 0)) +
+    scale_x_continuous(expand = c(0, 0)) + 
+    scale_colour_gradientn(colours = palette) + 
+    scale_size(range = c(0, 10)) + 
+    theme_void()
+}
+#testing out new data frame visualization
+polar_art_2(seed = 2, n = 200, palette = c("deeppink3", "cadetblue1", "lightgoldenrod1"))
+```
+
+3.) The reason we may be naming files in this way because our functions produce art peices in very similar styles, so by naming these function similarly we can remember that their outputs are related.
+
+Exercises:
+1.) First I will be importing the function she created:
+```{r}
+library(ggthemes)
+
+# the original function from the first session
+sample_canva <- function(seed = NULL) {
+  if(!is.null(seed)) set.seed(seed)
+  sample(ggthemes::canva_palettes, 1)[[1]]} 
+```
+Now I will practice calling on the function.
+```{r}
+#seeing the same configuration but with different palletes
+polar_art(seed = 5, n = 100, palette = sample_canva(seed = 1))
+polar_art(seed = 5, n = 100, palette = sample_canva(seed = 2))
+#keeping both seeds the same
+polar_art(seed = 7, n = 100, palette = sample_canva(seed = 7))
+
+```
+
+2.) Now attempting to form my own function:
+```{r}
+#constructing new function
+sample_named_colours <- function(seed = NULL) {
+  if(!is.null(seed)) set.seed(seed)
+  sample(colours(distinct = TRUE), 1)[[1]]
+}
+#testing out pallette function with polar art
+polar_art(seed = 7, n = 100, palette = sample_named_colours(seed = 7))
+#trying to make it more aesthetic, very one dimensional, but I like the color
+polar_art(seed = 2, n = 100, palette = sample_named_colours(seed = 300))
+```
+
+3.) I will now attempt to create a function that nreaks the constraint of returning colors all from the same pallette.
+```{r}
+#importing the original function and modifing the name as well as sample theme
+sample_canva_new <- function(seed = NULL) {
+  if(!is.null(seed)) set.seed(seed)
+  sample(unlist(ggthemes::canva_palettes), 1)[[1]]
+}
+```
+I will now test out this new function:
+```{r}
+polar_art(seed = 4, n = 150, palette = sample_canva_new(seed = 620))
+```
+
+
+Exercises:
+1.) Exploring flexibility in these pre-generated functions.
+```{r}
+#calling in functions previously created
+library(ggplot2)
+library(tibble)
+library(dplyr)
+
+sample_canva <- function(seed = NULL) {
+  if(!is.null(seed)) set.seed(seed)
+  sample(ggthemes::canva_palettes, 1)[[1]]
+}
+
+sample_data <- function(seed = NULL, n = 100){
+  if(!is.null(seed)) set.seed(seed)
+  dat <- tibble(
+    x0 = runif(n),
+    y0 = runif(n),
+    x1 = x0 + runif(n, min = -.2, max = .2),
+    y1 = y0 + runif(n, min = -.2, max = .2),
+    shade = runif(n), 
+    size = runif(n),
+    shape = factor(sample(0:22, size = n, replace = TRUE))
+  )
+}
+
+polar_styled_plot <- function(data = NULL, palette) {
+  ggplot(
+    data = data,
+    mapping = aes(
+      x = x0,
+      y = y0,
+      xend = x1,
+      yend = y1,
+      colour = shade,
+      size = size
+    )) + 
+    coord_polar(clip = "off") +
+    scale_y_continuous(
+      expand = c(0, 0),
+      limits = c(0, 1), 
+      oob = scales::oob_keep
+    ) +
+    scale_x_continuous(
+      expand = c(0, 0), 
+      limits = c(0, 1), 
+      oob = scales::oob_keep
+    ) + 
+    scale_colour_gradientn(colours = palette) + 
+    scale_size(range = c(0, 10)) + 
+    theme_void() + 
+    guides(
+      colour = guide_none(),
+      size = guide_none(),
+      fill = guide_none(),
+      shape = guide_none()
+    )
+}
+#changing seeds of pallette and data
+
+dat <- sample_data(n = 100, seed = 3) 
+pal <- sample_canva(seed = 25)
+
+#now exploring the amount of visual I can make via manipulation of geom point
+polar_styled_plot(data = dat, palette = pal) + geom_segment()
+polar_styled_plot(data = dat, palette = pal) + geom_bin2d()
+polar_styled_plot(data = dat, palette = pal) + geom_jitter()
+
+```
+
+2.) Creating my own verson of polar styled plot.
+```{r}
+my_styled_plot <- function(data = NULL, palette) {
+  ggplot(
+  data = data, mapping = aes(
+     x = x0,
+      y = y0,
+      xend = x1,
+      yend = y1,
+      colour = shade,
+      size = size,
+    #adding in a shape for each point
+      shape = shape
+    )) + 
+    #changing the tilt of the pichart to the variable y
+    coord_polar(clip = "off", theta = "y") +
+    scale_y_continuous(
+      expand = c(0, 0),
+      limits = c(0, 1), 
+      oob = scales::oob_keep
+    ) +
+    scale_x_continuous(
+      expand = c(0, 0), 
+      limits = c(0, 1), 
+      oob = scales::oob_keep
+    ) + 
+    scale_colour_gradientn(colours = palette) + 
+    scale_size(range = c(0, 10)) + 
+    theme_void() + 
+    guides(
+      colour = guide_none(),
+      size = guide_none(),
+      fill = guide_none(),
+      shape = guide_none()
+    )
+}
+  
+#trying out the new function with a jitter plot
+my_styled_plot(data = dat, palette = pal) + geom_jitter()
+#trying it out with segments!
+my_styled_plot(data = dat, palette = pal) + geom_segment()
+```
 
