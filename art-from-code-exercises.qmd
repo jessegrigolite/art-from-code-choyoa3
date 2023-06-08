@@ -305,3 +305,395 @@ my_styled_plot(data = dat, palette = pal) + geom_jitter()
 my_styled_plot(data = dat, palette = pal) + geom_segment()
 ```
 
+
+# Shading Tricks
+```{r}
+#loading in neccessary packages
+library(rayshader)
+library(tibble)
+library(ambient)
+library(dplyr)
+library(ggplot2)
+library(ggthemes)
+library(tictoc)
+library(dplyr)
+```
+
+1.) From now on the exercises consist of me tweaking and playing with the script. For this exercise I will be using the circle-scape function. First I will be inserting all required code functions.
+```{r}
+# inserting initial art function that creates circles
+is_within_circle <- function(x_coord, y_coord, x_center, y_center, radius) {
+  (x_coord - x_center)^2 + (y_coord - y_center)^2 < radius^2
+}
+```
+
+```{r}
+#inserting new function to create circles at random with coordinate columns for x, y, and paint
+additive_circles <- function(n = 5, pixels = 1000, seed = NULL) {
+  
+  if(!is.null(seed)) set.seed(seed)
+  
+  # setup canvas
+  art <- long_grid(
+    x = seq(0, 1, length.out = pixels),
+    y = seq(0, 1, length.out = pixels)
+  )
+  art$paint <- 0
+  
+  for(i in 1:n) {
+    
+    # sample a random circle
+    x_center <- runif(1, min = .3, max = .7)
+    y_center <- runif(1, min = .3, max = .7)
+    radius <- runif(1, min = .05, max = .25)
+    
+    # add +1 to all points inside the circle
+    art <- art |>
+      mutate(
+        paint = paint + is_within_circle(
+          x, y, x_center, y_center, radius
+        )
+      )
+  }
+  
+  # normalise paint to [0, 1] range and return
+  art$paint <- normalise(art$paint)
+  return(art)
+}
+```
+
+```{r}
+#plotting additive circles
+circle_art <- additive_circles(seed = 99)
+circle_art
+ggplot(circle_art, aes(x, y, fill = paint)) +
+  geom_raster(show.legend = FALSE) + 
+  theme_void()
+```
+
+```{r}
+#using the ambient package to switch from a tibble to a matrix
+circle_array <- circle_art |>
+  as.array(value = paint) 
+
+circle_array[1:10, 1:10]
+```
+
+```{r}
+#plotting this matrix using image function
+circle_array |> 
+  image(axes = FALSE, asp = 1, useRaster = TRUE)
+```
+
+```{r}
+#creating a new object to utlize the tools of a terrian map
+circle_shadow <- ray_shade(
+  heightmap = circle_array,
+  sunaltitude = 15, 
+  sunangle = 135,
+  zscale = .01,
+  multicore = TRUE
+)
+
+plot_map(circle_shadow, rotate = 270)
+```
+
+I will now be using the rayshader packing to play with adding 3 dimensions to my visualizations. By increasing the sun's altitube, the visualization is much bright with minimal shading.
+```{r}
+#changing sun altitude
+circle_shadow <- ray_shade(
+  heightmap = circle_array,
+  sunaltitude = 40, 
+  sunangle = 135,
+  zscale = .01,
+  multicore = TRUE
+)
+
+plot_map(circle_shadow, rotate = 270)
+```
+Now if I keep the altitude the same but increase the angle the contrast of the edges of the circles increases.
+```{r}
+#changing sun angle
+circle_shadow <- ray_shade(
+  heightmap = circle_array,
+  sunaltitude = 40, 
+  sunangle = 160,
+  zscale = .01,
+  multicore = TRUE
+)
+
+plot_map(circle_shadow, rotate = 270)
+```
+Now I will be importing the code to make a height to shadow visualization. I changed the max_darken argument in order to make the visualization brighter.
+```{r}
+#creating visualization with shadowing using color and changing the max_darken argument
+circle_scape <- circle_array |> 
+  height_shade() |>
+  add_shadow(
+    shadowmap = circle_shadow,
+    max_darken = .3
+  )
+
+plot_map(circle_scape, rotate = 270)
+```
+
+
+2.) I will now be utilizing the script for shaded ridge art to understand its components and modify it to make a piece of my own.
+```{r}
+#loading in my palette
+sample_canva2 <- function(seed = NULL, n = 4) {
+  if(!is.null(seed)) set.seed(seed)
+  sample(ggthemes::canva_palettes, 1)[[1]] |>
+    (\(x) colorRampPalette(x)(n))()} 
+```
+
+```{r}
+#creating the function ridge art to use spatial art to produce patterns
+ridge_art <- function(seed = NULL, pixels = 2000) {
+  
+  if(!is.null(seed)) set.seed(seed)
+  long_grid(
+    x = seq(from = 0, to = 1, length.out = pixels),
+    y = seq(from = 0, to = 1, length.out = pixels)
+  ) |> 
+    mutate(
+      paint = fracture(
+        x = x, 
+        y = y,
+        noise = gen_simplex,
+        fractal = ridged,
+        octaves = 8,
+        frequency = 10,
+        seed = seed
+      ),
+      paint = normalise(paint)
+    ) |>
+    as.array(value = paint)
+}
+```
+
+```{r}
+#testing out this function and tweaking the colors to my liking
+ridge_art(5678) |> 
+  image(
+    axes = FALSE, 
+    asp = 1, 
+    useRaster = TRUE, 
+    col = sample_canva2(seed = 5678, n = 300)
+  ) 
+```
+
+```{r}
+#now creating a function that incorporate ray shader to layer on a shadow map
+shaded_ridge_art <- function(seed = NULL) {
+  
+  art <- ridge_art(seed) 
+  height_shade(
+    heightmap = art,
+    texture = sample_canva2(seed, 256)
+  ) |>
+    add_shadow(
+      shadowmap = ray_shade(
+        heightmap = art, 
+        sunaltitude = 30, 
+        sunangle = 90,
+        multicore = TRUE, 
+        zscale = .05
+      ), 
+      max_darken = .1
+    ) |>
+    plot_map()
+}
+```
+
+```{r}
+#now testing out this shaded map in my colors
+shaded_ridge_art(5678)
+
+```
+
+3.) I will now be exploring aspects of the shaded icescapes script to make some work of my own!
+```{r}
+#adding in all packages not previously loaded
+library(here)
+```
+
+```{r}
+#generating the first set of coordinates that will be laid over noise
+transform_to_curl_space <- function(x, y, frequency = 1, octaves = 10) {
+  curl_noise(
+    generator = fracture,
+    noise = gen_simplex,
+    fractal = fbm,
+    octaves = octaves,
+    frequency = frequency,
+    x = x,
+    y = y
+  )
+}
+#now constructing cells within this curl space by creating this function
+define_worley_cells <- function(x, y, frequency = 3, octaves = 6) {
+  fracture(
+    noise = gen_worley,
+    fractal = billow,
+    octaves = octaves,
+    frequency = frequency,
+    value = "cell",
+    x = x,
+    y = y
+  ) |>
+    rank() |> 
+    normalise()
+}
+```
+
+```{r}
+#using a function to generate simplex noise between the offset of coordinates
+simplex_noise <- function(x, y, frequency = .1, octaves = 10) {
+  fracture(
+    noise = gen_simplex,
+    fractal = ridged,
+    octaves = octaves,
+    frequency = frequency,
+    x = x,
+    y = y
+  ) |>
+    normalise()
+}
+```
+
+```{r}
+#now combining all of this chaos into a single generative function
+ice_floe <- function(seed) {
+  
+  set.seed(seed)
+  
+  grid <- long_grid(
+    x = seq(0, 1, length.out = 2000),
+    y = seq(0, 1, length.out = 2000)
+  )
+  
+  coords <- transform_to_curl_space(grid$x, grid$y)
+  
+  grid |>
+    mutate(
+      cells = define_worley_cells(coords$x, coords$y),
+      paint = simplex_noise(x + cells, y + cells),
+      paint = normalise(paint)
+    ) |>
+    as.array(value = paint)
+}
+```
+```{r}
+#now plotting the intital image without three dimensional shading
+ice_floe(170) |> 
+  image(
+    axes = FALSE, 
+    asp = 1, 
+    useRaster = TRUE, 
+   #chaning the colors and segments, this one looked like an avocado so i will keep it
+     col = sample_canva2(seed = 100, n = 324)
+  )
+```
+```{r}
+#now altering the function to incorporate ray shader and make the visual three dimensional
+shaded_ice_floe <- function(seed) {
+  
+  art <- ice_floe(seed)
+  
+  height_shade(
+    heightmap = art,
+    texture = sample_canva2(seed, 256)
+  ) |>
+    add_shadow(
+      shadowmap = ray_shade(
+        heightmap = art, 
+        sunaltitude = 30, 
+        sunangle = 90,
+        multicore = TRUE, 
+        zscale = .005
+      ), 
+      max_darken = .05
+    ) |>
+    plot_map()
+}
+
+shaded_ice_floe(170)
+```
+Now I will be trying different colors with this function!
+```{r}
+#inserting different color codes
+shaded_ice_floe(222)
+#this one reminds me of kinetic sand
+shaded_ice_floe(97)
+```
+
+4.) Now I will be loading and utilizing the 3d icescape script.
+```{r}
+#using the circle height and shading map to create a 3D output, tweaking colors of background and fill
+plot_3d(
+  hillshade = circle_scape,
+  heightmap = circle_array,
+  theta = 230,
+  phi = 15,
+  zoom = .8,
+  zscale = .001,
+  baseshape = "circle",
+  background = "#999999",
+  shadow = FALSE,
+  soliddepth = .3,
+  solidcolor = "#982034",
+  windowsize = 1200
+)
+
+render_snapshot(
+  filename = "circles_3d.png", 
+  clear = TRUE
+)
+
+knitr::include_graphics("circles_3d.png")
+```
+```{r}
+#creating a 3D output of the last ice floes function
+seed <- 170
+
+ice_height <- matrix(0, 2500, 2500)
+ice_height[251:2250, 251:2250] <- ice_floe(seed)
+
+ice_scape <- height_shade(
+  heightmap = ice_height,
+  texture = sample_canva2(seed, 256)
+) |>
+  add_shadow(
+    shadowmap = ray_shade(
+      heightmap = ice_height, 
+      sunaltitude = 30, 
+      sunangle = 90,
+      multicore = TRUE, 
+      zscale = .005
+    ), 
+    max_darken = .05
+  )
+
+plot_3d(
+  hillshade = ice_scape,
+  heightmap = ice_height,
+  theta = 45,
+  phi = 30,
+  zoom = .75,
+  zscale = .001,
+  background = "#222222",
+  shadow = FALSE,
+  soliddepth = .5,
+  solidcolor = "#222222",
+  windowsize = c(2500, 1500)
+)
+
+render_snapshot(
+  filename = "ice_3d.png", 
+  clear = TRUE
+)
+
+knitr::include_graphics("ice_3d.png")
+```
+
