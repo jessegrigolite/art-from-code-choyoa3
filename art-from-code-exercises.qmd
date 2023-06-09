@@ -13,7 +13,7 @@ execute:
   warning: false
 ---
 
-# Getting Started
+# Task 1: Getting Started
 
 Exercise: Try it yourself!
 
@@ -178,7 +178,7 @@ polar_art(seed = 7, n = 100, palette = sample_named_colours(seed = 7))
 polar_art(seed = 2, n = 100, palette = sample_named_colours(seed = 300))
 ```
 
-3.) I will now attempt to create a function that nreaks the constraint of returning colors all from the same pallette.
+3.) I will now attempt to create a function that breaks the constraint of returning colors all from the same palette.
 ```{r}
 #importing the original function and modifing the name as well as sample theme
 sample_canva_new <- function(seed = NULL) {
@@ -306,7 +306,7 @@ my_styled_plot(data = dat, palette = pal) + geom_segment()
 ```
 
 
-# Shading Tricks
+# Task 2: Shading Tricks
 ```{r}
 #loading in neccessary packages
 library(rayshader)
@@ -697,3 +697,346 @@ render_snapshot(
 knitr::include_graphics("ice_3d.png")
 ```
 
+# Task 3: Pixel Filters
+
+1.) Exploring the flame tree package to make my own cherry blossom tree!
+```{r}
+library(flametree)
+```
+
+```{r}
+#loading in the data frame provided
+tree <- flametree_grow(
+  seed = 1, 
+  time = 9, 
+  angle = c(-15, 15, 30)
+)
+tree
+```
+```{r}
+# plotting the tree given as an example
+tree |> 
+  flametree_plot(
+    background = "#222222", 
+    palette = c("#ffffff", "#f652a0")
+  )
+```
+```{r}
+#understanding that each curved point of the tree is represented by three coordinates of data, and that we will seperate a leaf id column in order to manipulate it in the future
+leaf <- tree |> filter(id_leaf == TRUE)
+```
+```{r}
+#creating the base of my visualization
+base <- ggplot() + 
+  scale_size_identity() + 
+  theme_void() + 
+  coord_equal()
+```
+```{r}
+#creating the leaves of the tree, altering the size, border, and color to my liking
+leaves <- geom_point(
+  mapping = aes(coord_x, coord_y),
+  data = leaf, 
+  size = 1, 
+  stroke = .5, 
+  colour = "orchid1"
+)
+```
+```{r}
+#creating the trunk
+library(ggforce)
+trunk <- geom_bezier(
+  mapping = aes(coord_x, coord_y, group = id_pathtree, size = seg_wid),
+  data = tree, 
+  lineend = "round", 
+  colour = "saddlebrown",
+  show.legend = FALSE
+)
+```
+```{r}
+#putting it all together to make my cherry blossom tree!
+base + trunk + leaves
+```
+
+2.) I will now explore glow properties to add it to my tree.
+```{r}
+library(ggfx)
+#changed to inner glow, changed the leaf glow to pink
+#added golden glow to the trunk
+base +   
+  with_outer_glow(trunk, colour = "gold") + 
+  with_inner_glow(leaves, colour = "pink")
+
+ 
+```
+
+3.) I will now explore the dithering effect on the previous art made during the getting started segment.
+```{r}
+#creating the radial art to then dither
+set.seed(1)
+polar <- tibble(
+  arc_start = runif(200),
+  arc_end = arc_start + runif(200, min = -.2, max = .2),
+  radius = runif(200),
+  shade = runif(200), 
+  size = runif(200)
+)
+
+base <- ggplot(
+  data = polar, 
+  mapping = aes(
+    x = arc_start, 
+    y = radius,
+    xend = arc_end, 
+    yend = radius, 
+    colour = shade, 
+    size = size
+  )
+) + 
+  coord_polar(clip = "off") +
+  scale_y_continuous(limits = c(0, 1), oob = scales::oob_keep) +
+  scale_x_continuous(limits = c(0, 1), oob = scales::oob_keep) + 
+  scale_colour_viridis_c(option = "magma") +
+  guides(colour = guide_none(), size = guide_none()) + 
+  scale_size(range = c(0, 10)) + 
+  theme_void() +
+  theme(panel.background = element_rect(fill = "#aaaaaa"))
+```
+```{r}
+#now trying out the dithering effect, and manipulating number of colors
+base + geom_segment()
+base + with_dither(geom_segment(), max_colours = 4)
+```
+
+```{r}
+#manipulating the number of colors and apply dithering with the other effects
+base + with_halftone_dither(geom_segment(), max_colours = 4)
+with_halftone_dither(base + geom_segment(), max_colours = 5)
+```
+
+4.) I will now be exploring the masking effect which only reveals a layer of the plot when it overlaps with another. I will be making a cheesy sticker.
+```{r}
+# first i will import the textured plot that will be used as the background
+texture <- geom_raster(
+  mapping = aes(x, y, fill = paint),
+  data = long_grid(
+    x = seq(from = -1, to = 1, length.out = 1000),
+    y = seq(from = -1, to = 1, length.out = 1000)
+  ) |> 
+    mutate(
+      lf_noise = gen_simplex(x, y, frequency = 2, seed = 1234),
+      mf_noise = gen_simplex(x, y, frequency = 20, seed = 1234),
+      hf_noise = gen_simplex(x, y, frequency = 99, seed = 1234),
+      paint = lf_noise + mf_noise + hf_noise
+    )
+)
+```
+```{r}
+#next import the code/shape that will be overlayed the texture
+hex <- tibble(x = sin((0:6)/6 * 2 * pi), y = cos((0:6)/6 * 2 * pi))
+mask <- geom_polygon(aes(x, y), hex, fill = "white")
+```
+```{r}
+#now both texture and the shapes will be on top of this background called base
+#the original code was not providing a colored background so i edited it for a blue background
+base <- ggplot() + 
+  theme(
+    panel.background = element_rect(fill = "lightcyan1"),
+    axis.line = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    panel.grid = element_blank(),
+    panel.border = element_blank()
+  ) +
+  coord_equal() +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_fill_gradientn(
+    colours = c("paleturquoise1", "lightseagreen"), 
+    guide = guide_none()
+  )
+
+base
+
+```
+
+```{r}
+#now looking at the base with each individual layer
+base + texture 
+base + mask
+```
+```{r}
+#now putting it all together
+base + 
+  as_reference(mask, id = "mask") + 
+  with_mask(texture, "mask")
+```
+```{r}
+#creating a border
+border <- geom_path(aes(x, y), hex, colour = "white", size = 5)
+#adding my text
+text <- geom_text(
+  mapping = aes(x, y, label = text), 
+  dat = tibble(x = 0, y = 0, text = "KEEP CALM 
+AND CODE ON"), 
+  
+  size = 10,
+  colour = "white", 
+  fontface = "bold"
+) 
+```
+
+```{r}
+#putting the border and text on top
+base + texture + text + border
+base + 
+  as_group(texture, text, border, id = "content") +
+  as_reference(mask, id = "mask") + 
+  with_mask("content", "mask")
+```
+
+5.) In this exercise I will be practicing displacement, where the color of pixels determine the placement of them in the visualization.
+```{r}
+#importing a polygon layer of transparent triangles, changing the color of the fill
+polygon_layer <- function(x, y, fill = "red1", alpha = .5) {
+  geom_polygon(aes(x, y), fill = fill, alpha = alpha)
+}
+poly1 <- polygon_layer(x = c(1, 0, 0), y = c(0, 0, 1))
+poly2 <- polygon_layer(x = c(0, 1, 1), y = c(0, 0, 1))
+poly3 <- polygon_layer(x = c(.3, 1, 1), y = c(0, 0, .7))
+poly4 <- polygon_layer(x = c(0, 0, .7), y = c(.3, 1, 1))
+```
+```{r}
+#adding in a base plot for the polygons to be layered on
+base <- ggplot() + 
+  coord_equal(xlim = c(0, 1), ylim = c(0, 1)) + 
+  theme_void() + 
+  theme(panel.background = element_rect(fill = "darkorange2"))
+#layering them
+base + poly1 + poly2 + poly3 + poly4
+```
+
+```{r}
+#importing a layer that will be used as the image that will be displaced, and changing the text to something "edgy"
+text <- geom_text(
+  mapping = aes(0.5, 0.5, label = "ME?"), 
+  size = 60, 
+  colour = "black", 
+  fontface = "bold"
+)
+```
+
+```{r}
+base + poly1 + poly2 + poly3 + poly4 + text
+base +
+  #converting into a single layer
+  as_group(poly1, poly2, poly3, poly4, id = "polygons", include = TRUE) +
+  #making this group the filter
+  as_reference("polygons", id = "displacement_map") + 
+  #displacing
+  with_displacement(
+    text,
+    x_map = ch_alpha("displacement_map"),
+    y_map = ch_alpha("displacement_map"), 
+   #improving the amount of pixels shifting
+     x_scale = 300,
+    y_scale = -300
+  )
+```
+
+6.) Now I will be exploring the blend technique in art in order the modify my previous flame tree.
+```{r}
+#importing a solid triangle
+triangle <- polygon_layer(
+  x = c(-4, 2, 2), 
+  y = c(0, 0, 6), 
+  fill = "white",
+  alpha = 1
+)
+```
+```{r}
+#creating a blend of pixels with the triangle and flametree
+base <- ggplot() + 
+  theme_void() +
+  coord_equal(xlim = c(-3, 1), ylim = c(1, 5)) +
+  scale_x_continuous(expand = c(0, 0)) +
+  scale_y_continuous(expand = c(0, 0)) +
+  scale_size_identity(guide = guide_none())
+
+base +
+  as_group(trunk, leaves, id = "tree") + 
+  with_blend(triangle, "tree", blend_type = "xor")
+```
+
+
+# Task 4: My Art
+I will attempt to recreate one of my favorite pieces to resemble the shoreline.
+
+
+
+```{r}
+# first i will import the textured plot that will be used as the background
+texture <- geom_raster(
+  mapping = aes(x, y, fill = paint),
+  data = long_grid(
+    x = seq(from = -1, to = 1, length.out = 1000),
+    y = seq(from = -1, to = 1, length.out = 1000)
+  ) |> 
+    mutate(
+      lf_noise = gen_simplex(x, y, frequency = 2, seed = 1234),
+      mf_noise = gen_simplex(x, y, frequency = 20, seed = 1234),
+      hf_noise = gen_simplex(x, y, frequency = 99, seed = 1234),
+      paint = lf_noise + mf_noise + hf_noise
+    )
+)
+```
+```{r}
+#importing a polygon layer of transparent triangles, changing the color of the fill
+polygon_layer <- function(x, y, fill = "sandybrown", alpha = .5) {
+  geom_polygon(aes(x, y), fill = fill, alpha = alpha)
+}
+poly1 <- polygon_layer(x = c(1, 0, 0), y = c(0, 0, 1))
+poly2 <- polygon_layer(x = c(0, 1, 2), y = c(0, 0, 1))
+poly3 <- polygon_layer(x = c(.3, 1, 2), y = c(0, 0, .5))
+poly4 <- polygon_layer(x = c(0, 0, .5), y = c(.3, 1, 1))
+```
+```{r}
+#adding in a base plot for the polygons to be layered on
+base <- ggplot() + 
+  coord_equal(xlim = c(0, 1), ylim = c(0, 1)) + 
+  theme_void() + 
+  theme(panel.background = element_rect(fill = "powderblue"), legend.position = "none")
+#layering them
+base + texture + poly1 + poly2 + poly3 + poly4 
+```
+
+```{r}
+#creating text
+#importing a layer that will be used as the image that will be displaced, and changing the text to something "edgy"
+text <- geom_text(
+  mapping = aes(0.25, 0.5, label = "  ocean"), 
+  size = 20, 
+  colour = "white" 
+ 
+)
+```
+```{r}
+base + texture +
+  #converting into a single layer
+  as_group(poly1, poly2, poly3, poly4, id = "polygons", include = TRUE) +
+  #making this group the filter
+  as_reference("polygons", id = "displacement_map") + 
+  #displacing
+  with_displacement(
+    text,
+    x_map = ch_alpha("displacement_map"),
+    y_map = ch_alpha("displacement_map"), 
+   #improving the amount of pixels shifting
+     x_scale = 300,
+    y_scale = -300
+  )
+```
+
+# Summary
+This process was very new to me. I was unaware that R Studio could foster so much creativity and create such a variety of outputs. Each task presented a bit of a challenge as almost every function in this workshop was new to me. I enjoyed getting to manipulate pre-existing code to form my own functions. Additionally, the ray shader package was my favorite by far for its realism, I was surprised by how well the technology could decifer spatial concepts. Although the majority of this workshop was foreign to me, it surprised me by how well I was able to follow the code and I thought it was a great exercise to step out of the world of data and science and understand how this can be a tool for expression.
